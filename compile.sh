@@ -1,0 +1,1 @@
+C:/Users/Tijn/QMK_MSYS/conemu/ConEmu64.exe -NoSingle -NoUpdate -icon "C:/Users/Tijn/QMK_MSYS/icon.ico" -title "QMK MSYS" -run "C:/Users/Tijn/QMK_MSYS/usr/bin/bash.exe" -l -i -cur_console:m -c "qmk compile"

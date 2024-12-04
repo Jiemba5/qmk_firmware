@@ -1,0 +1,17 @@
+Welcome to QMK MSYS!
+  * Documentation:    https://docs.qmk.fm
+  * Support:          https://discord.gg/qmk
+
+If you have not already done so,
+  run [1;33mqmk setup[0m to get started.
+  run [0;32mqmk compile -kb <keyboard> -km default[0m to start building.
+  run [0;31mqmk config user.hide_welcome=True[0m to hide this message.
+Ψ Compiling keymap with make -r -R -f builddefs/build_keyboard.mk -s KEYBOARD=dztech/tofu/jr/v1 KEYMAP=Jiemba5 KEYBOARD_FILESAFE=dztech_tofu_jr_v1 TARGET=dztech_tofu_jr_v1_Jiemba5 VERBOSE=false COLOR=true SILENT=false QMK_BIN="qmk"
+
+
+arm-none-eabi-gcc.exe (GCC) 13.3.0
+Copyright (C) 2023 Free Software Foundation, Inc.
+This is free software; see the source for copying conditions.  There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+
+Copying dztech_tofu_jr_v1_Jiemba5.uf2 to qmk_firmware folder                                        [32;01m[OK][0m

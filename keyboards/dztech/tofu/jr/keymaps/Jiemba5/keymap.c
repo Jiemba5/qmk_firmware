@@ -15,9 +15,12 @@
  */
 #define DRIVER_LED_TOTAL 48
 #include QMK_KEYBOARD_H
+#include "print.h"
+#include "color_maps.c"
 // Timer and counter variables
 static uint16_t tap_timer = 0;
 static uint8_t tap_count = 0;
+bool reset_to_default_light = false;
 #define TAP_TIME 200 // Timeframe in milliseconds
 #define _DEFAULT 0
 #define _APEX 3
@@ -27,46 +30,44 @@ enum custom_keycodes {
     SWITCH_APEX = SAFE_RANGE+1,
 };
 
-typedef struct{
-    int r;
-    int b;
-    int g;
-} MY_RGB;
-
-typedef struct {
-    int period;
-    int start;
-} TimeThing;
-
-typedef struct {
-    int index;
-    MY_RGB rgb;
-    TimeThing timer;
-} ColorKeys;
-
-
+extern struct ApexColorMap apex_color_map;
+extern struct DefaultColorMap default_color_map;
 
 typedef enum {
     DEFAULT = 0,
-    APEX = 4,
+    APEX = 3,
 } Profile;
 
 Profile current_profile = DEFAULT;
 
+void set_defaut_light_mode(void){
+    // MY_RGB DEFAULT_RGB = {255, 255, 255};
+    rgb_matrix_mode(RGB_MATRIX_HUE_PENDULUM);
+        
+    reset_to_default_light = false;
+}
+
 void switchToProfile(Profile new_profile){
     if (current_profile == new_profile) {
-        layer_on(_DEFAULT);
+        reset_to_default_light = true;
+        layer_move(_DEFAULT);
+        current_profile = DEFAULT;
+        return;
     }
 
     switch (new_profile) {
         case APEX:
-            layer_on(_APEX);
+            layer_move(_APEX);
             current_profile = APEX;
+            break;
         default:
-            layer_on(_DEFAULT);
+            reset_to_default_light = true;
+            layer_move(_DEFAULT);
             current_profile = DEFAULT;
-    }
-    
+            break;
+        }
+    uprintf("%d urrent profile: \n", current_profile);
+    uprintf("%d new profile: \n", new_profile);
 }
 
 
@@ -99,24 +100,21 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
                              KC_B, KC_N, KC_M, KC_COMM, KC_DOT, KC_SLSH, KC_RSFT, KC_UP, SWITCH_APEX, KC_LCTL, KC_LGUI,
                              KC_LALT, KC_SPC, KC_RALT, KC_RGUI, KC_RCTL, KC_LEFT, KC_DOWN, KC_RGHT),
 };
+
+
 void keyboard_post_init_user(void) {
-    rgb_matrix_mode(RGB_MATRIX_HUE_PENDULUM);
+    initialize_color_maps();
+    rgb_matrix_init();
+    set_defaut_light_mode();
+    // debug_enable = true;
+    // debug_matrix=true;
 }
 
-#define KEYS_APEX 4
-ColorKeys apex_color_map[KEYS_APEX] = {
-    {52, {0,0,255}, {500, 0}}, // ,
-    {53, {0,0,255}, {500, 0}}, // .
-    {54, {0,0,255}, {500, 0}}, // /
-    {41, {0,0,255}, {500, 0}}};// '
-
-MY_RGB APEX_RGB = {0, 255, 0};
-MY_RGB DEFAULT_RGB = {200, 200, 200};
-
-void displayRgbMatrix(ColorKeys* color_keys, MY_RGB default_rgb)
+void displayRgbMatrix(ColorKeys* color_keys, int num_keys, MY_RGB default_rgb)
 {
-    for (int i = 0; i < KEYS_APEX;i++){
-        if (timer_elapsed(color_keys[i].timer.start)<= color_keys[i].timer.period){
+    for (int i = 0; i < num_keys; i++)
+    {
+        if (timer_elapsed(color_keys[i].timer.start) <= color_keys[i].timer.period){
             rgb_matrix_set_color(color_keys[i].index, color_keys[i].rgb.r, color_keys[i].rgb.g, color_keys[i].rgb.b);
         } else {
             rgb_matrix_set_color(color_keys[i].index, default_rgb.r, default_rgb.g, default_rgb.b);
@@ -124,16 +122,21 @@ void displayRgbMatrix(ColorKeys* color_keys, MY_RGB default_rgb)
     }
 }
 
-bool rgb_matrix_indicators_user(void) {
-
+bool rgb_matrix_indicators_user(void)
+{
     switch (current_profile) {
         case DEFAULT:
         {
-            // displayRgbMatrix(default_color_map, DEFAULT_RBG);
+            if (reset_to_default_light){
+                set_defaut_light_mode();
+            }
+            return true;
         }
         case APEX:
-        {
-            displayRgbMatrix(apex_color_map, APEX_RGB);
+        {   
+            MY_RGB APEX_RGB = {20, 255, 0};
+            displayRgbMatrix(apex_color_map.color_keys, apex_color_map.num_keys, APEX_RGB);
+            return true;
         }
 
         default:
@@ -155,6 +158,7 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
             }
             case SWITCH_APEX:
             {
+                print("pressed swith to apex\n");
                 switchToProfile(APEX);
                 return false;
             }
@@ -175,29 +179,29 @@ void matrix_scan_user(void) {
         if (timer_elapsed(tap_timer) >= TAP_TIME && tap_count > 0) {
             if (tap_count == 1) {
                 send_string(",");
-                apex_color_map[0] = tickApexColorKey(apex_color_map[0]);
+                apex_color_map.color_keys[0] = tickApexColorKey(apex_color_map.color_keys[0]);
             }
             else if (tap_count == 2)
             {
                 send_string(".");
-                apex_color_map[1] = tickApexColorKey(apex_color_map[1]);
+                apex_color_map.color_keys[1] = tickApexColorKey(apex_color_map.color_keys[1]);
             }
             else if (tap_count == 3)
             {
                 send_string("/");
-                apex_color_map[2] = tickApexColorKey(apex_color_map[2]);
+                apex_color_map.color_keys[2] = tickApexColorKey(apex_color_map.color_keys[2]);
             }
             else
             {
                 send_string("'");
-                apex_color_map[3] = tickApexColorKey(apex_color_map[3]);
+                apex_color_map.color_keys[3] = tickApexColorKey(apex_color_map.color_keys[3]);
             }
-            tap_count = 4;
+            tap_count = 0;
         }
         if (tap_count >= 4) {
             tap_count = 0;
             send_string("'");
-            apex_color_map[3] = tickApexColorKey(apex_color_map[3]);
+            apex_color_map.color_keys[3] = tickApexColorKey(apex_color_map.color_keys[3]);
         }
     }
     
