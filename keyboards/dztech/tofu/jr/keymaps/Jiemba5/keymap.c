@@ -17,6 +17,7 @@
 #include QMK_KEYBOARD_H
 #include "print.h"
 #include "color_maps.c"
+#include "apex_layer.c"
 // Timer and counter variables
 static uint16_t tap_timer = 0;
 static uint8_t tap_count = 0;
@@ -28,6 +29,7 @@ bool reset_to_default_light = false;
 enum custom_keycodes {
     TAP_HANDLER = SAFE_RANGE,
     SWITCH_APEX = SAFE_RANGE+1,
+    SUPER_GLIDE = SAFE_RANGE+2,
 };
 
 extern struct ApexColorMap apex_color_map;
@@ -98,7 +100,7 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
                              KC_LBRC, KC_RBRC, KC_BSLS, KC_PGUP, KC_CAPS, KC_A, KC_S, KC_D, KC_F, KC_G, KC_H, KC_J,
                              KC_K, KC_L, KC_SCLN, KC_QUOT, KC_ENT, KC_PGDN, KC_LSFT, KC_Z, KC_X, TAP_HANDLER, KC_V,
                              KC_B, KC_N, KC_M, KC_COMM, KC_DOT, KC_SLSH, KC_RSFT, KC_UP, SWITCH_APEX, KC_LCTL, KC_LGUI,
-                             KC_LALT, KC_SPC, KC_RALT, KC_RGUI, KC_RCTL, KC_LEFT, KC_DOWN, KC_RGHT),
+                             SUPER_GLIDE, KC_SPC, KC_RALT, KC_RGUI, KC_RCTL, KC_LEFT, KC_DOWN, KC_RGHT),
 };
 
 
@@ -145,6 +147,15 @@ bool rgb_matrix_indicators_user(void)
     return true;
 }
 
+void executeSuperGlide(void){
+    tap_code(KC_SPACE);
+    wait_us(6700);
+    tap_code(KC_X);
+}
+ColorKeys tickApexColorKey(ColorKeys color_key){
+    ColorKeys new_color_key = {color_key.index, color_key.rgb, {color_key.timer.period, timer_read()}};
+    return new_color_key;
+}
 // Process custom keycode
 bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     if (record->event.pressed) {
@@ -162,6 +173,11 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                 switchToProfile(APEX);
                 return false;
             }
+            case SUPER_GLIDE: {
+                apex_color_map.color_keys[4] = tickApexColorKey(apex_color_map.color_keys[4]);
+                executeSuperGlide();
+                return false;
+            }
             default:
                 return true;
         }
@@ -169,14 +185,8 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     return true;
 }
 
-ColorKeys tickApexColorKey(ColorKeys color_key){
-    ColorKeys new_color_key = {color_key.index, color_key.rgb, {color_key.timer.period, timer_read()}};
-    return new_color_key;
-}
-
-void matrix_scan_user(void) {
-    if (current_profile == APEX) {
-        if (timer_elapsed(tap_timer) >= TAP_TIME && tap_count > 0) {
+void apexScanProtocol(void) {
+    if (timer_elapsed(tap_timer) >= TAP_TIME && tap_count > 0) {
             if (tap_count == 1) {
                 send_string(",");
                 apex_color_map.color_keys[0] = tickApexColorKey(apex_color_map.color_keys[0]);
@@ -198,11 +208,20 @@ void matrix_scan_user(void) {
             }
             tap_count = 0;
         }
-        if (tap_count >= 4) {
-            tap_count = 0;
-            send_string("'");
-            apex_color_map.color_keys[3] = tickApexColorKey(apex_color_map.color_keys[3]);
-        }
+    if (tap_count >= 4) {
+        tap_count = 0;
+        send_string("'");
+        apex_color_map.color_keys[3] = tickApexColorKey(apex_color_map.color_keys[3]);
     }
-    
+}
+
+void matrix_scan_user(void) {
+    switch (current_profile) {
+        case APEX: {
+                apexScanProtocol();
+                break;
+            }
+        default:
+            break;
+        }
 }
